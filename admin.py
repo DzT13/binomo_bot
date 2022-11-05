@@ -7,11 +7,9 @@ import os
 import re
 from json import load, dump
 from random import randrange
-from dataclasses import dataclass
 
-from guest import Guest
 from change_image import change_graph, change_form
-from bot import bot, dp, main_user_bot
+from bot import bot, dp
 
 
 class Form(StatesGroup):
@@ -21,50 +19,30 @@ class Form(StatesGroup):
 	requisit = State()
 
 
-@dataclass
-class MainUserBot(Guest):
-	user_wait_link = None
+async def send_start(message):
+	await bot.send_message(message.chat.id, "Выберите Вериф или Доход", reply_markup = button_admin())
 
-	def __init__(self, message):
-		self.status = type(self)
-		self.message = message
+async def send_add_users(message):
+	await bot.send_message(message.chat.id, text_add_users, reply_markup = button_admin())
+	await Form.add_users.set()
 
+async def send_form(message):
+	await bot.send_message(message.chat.id, text_form, reply_markup = button_admin())
+	await Form.form.set()
 
-@dataclass
-class Admin:
-	def __init__(self, message):
-		self.status = type(self)
-		self.message = message
+async def send_graph(message):
+	await bot.send_message(message.chat.id, text_graph, reply_markup = button_admin())
+	await Form.graph.set()
 
-	async def send_start(self):
-		await bot.send_message(self.message.chat.id, "Выберите Вериф или Доход", reply_markup = button_admin())
+async def send_requisit(message):
+	await bot.send_message(message.chat.id, "Введите реквизиты для инвестиций:", reply_markup = button_admin())
+	await Form.requisit.set()
 
-	async def send_add_users(self):
-		msg = await bot.send_message(self.message.chat.id, text_add_users, reply_markup = button_admin())
-		await Form.add_users.set()
+async def send_clear(message):
+	with open("users.json", "w") as f:
+		dump(dict(), f, indent = 4, ensure_ascii = False)
 
-	async def send_form(self):
-		msg = await bot.send_message(self.message.chat.id, text_form, reply_markup = button_admin())
-		await Form.form.set()
-
-	async def send_graph(self):
-		msg = await bot.send_message(self.message.chat.id, text_graph, reply_markup = button_admin())
-		await Form.graph.set()
-
-	async def send_requisit(self):
-		msg = await bot.send_message(self.message.chat.id, "Введите реквизиты для инвестиций:", reply_markup = button_admin())
-		await Form.requisit.set()
-
-	async def send_clear(self):
-		with open("users.json", "w") as f:
-			dump(dict(), f, indent = 4, ensure_ascii = False)
-
-		await bot.send_message(self.message.chat.id, "База данных успешно очищенна", reply_markup = button_admin())
-
-	async def send_create_group(self):
-		MainUserBot.user_wait_link = self.message.from_user.id
-		await bot.send_message(main_user_bot, 'create supergroup')
-
+	await bot.send_message(message.chat.id, "База данных успешно очищенна", reply_markup = button_admin())
 
 @dp.message_handler(state = Form.add_users)
 async def handle_add_users(message: types.Message, state: FSMContext):

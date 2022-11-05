@@ -9,7 +9,6 @@ from json import load, dump
 from random import shuffle
 from numpy import arange
 from datetime import datetime
-from dataclasses import dataclass
 
 from change_image import change_graph
 from bot import bot, dp
@@ -19,19 +18,12 @@ class Form(StatesGroup):
 	authorization = State()
 
 
-@dataclass
-class Guest:
-	def __init__(self, message):
-		self.status = type(self)
-		self.message = message
+async def send_authorization(message):
+	await bot.send_message(message.chat.id, text_authorization, reply_markup = button_users())
+	await Form.authorization.set()
 
-	async def send_authorization(self):
-		await bot.send_message(self.message.chat.id, text_authorization, reply_markup = button_users())
-		await Form.authorization.set()
-
-	async def send_support(self):
-		await bot.send_message(self.message.chat.id, text_support, reply_markup = button_users())
-
+async def send_support(message):
+	await bot.send_message(message.chat.id, text_support, reply_markup = button_users())
 
 @dp.message_handler(state = Form.authorization)
 async def handle_authorization(message: types.Message, state: FSMContext):
@@ -79,7 +71,7 @@ async def handle_authorization(message: types.Message, state: FSMContext):
 	wait_minute = (60 - datetime.now().minute) * 60
 	list_money = get_list_money(time_must_letter, overall_balance, total_income)
 
-	for n in range(time_must_letter - 4):
+	for n in range(time_must_letter - 3):
 		await asyncio.sleep(3600)
 
 		earn = list_money[n]
