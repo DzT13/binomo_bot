@@ -9,6 +9,7 @@ from json import load, dump
 from random import shuffle
 from numpy import arange
 from datetime import datetime
+from dataclasses import dataclass
 
 from change_image import change_graph
 from bot import bot, dp
@@ -18,12 +19,19 @@ class Form(StatesGroup):
 	authorization = State()
 
 
-async def send_authorization(message):
-	await bot.send_message(message.chat.id, text_authorization, reply_markup = button_users())
-	await Form.authorization.set()
+@dataclass
+class Guest:
+	def __init__(self, message):
+		self.status = type(self)
+		self.message = message
 
-async def send_support(message):
-	await bot.send_message(message.chat.id, text_support, reply_markup = button_users())
+	async def send_authorization(self):
+		await bot.send_message(self.message.chat.id, text_authorization, reply_markup = button_users())
+		await Form.authorization.set()
+
+	async def send_support(self):
+		await bot.send_message(self.message.chat.id, text_support, reply_markup = button_users())
+
 
 @dp.message_handler(state = Form.authorization)
 async def handle_authorization(message: types.Message, state: FSMContext):
@@ -51,17 +59,8 @@ async def handle_authorization(message: types.Message, state: FSMContext):
 	active_trading = user["aктив торговли"]
 
 	overall_balance = float(deposit) + 300
-	if overall_balance == int(overall_balance):
-		overall_balance = int(overall_balance)
-
-	total = overall_balance
-
-	if overall_balance <= 2500:
-		total_income = 104000
-	elif 2501 <= overall_balance >= 5000:
-		total_income = 180000
-	else:
-		total_income = 270000
+	overall_balance = {int(overall_balance): int(overall_balance)}.get(overall_balance, overall_balance)
+	total_income = 104000 if overall_balance <= 2500 else (180000 if 2501 <= overall_balance <= 5000 else 270000)
 
 	text = text_start_trading.format(full_name, deposit, overall_balance)
 	await bot.send_message(message.chat.id, text, reply_markup = button_users())
@@ -70,21 +69,12 @@ async def handle_authorization(message: types.Message, state: FSMContext):
 	time_must_letter = hour_before - datetime.now().hour
 	wait_minute = (60 - datetime.now().minute) * 60
 	list_money = get_list_money(time_must_letter, overall_balance, total_income)
+	total = overall_balance
 
-	for n in range(time_must_letter - 3):
-		await asyncio.sleep(3600)
-
-		earn = list_money[n]
-		total = round(total + earn, 3)
-		text = text_trading.format(earn, total)
-		await bot.send_message(message.chat.id, text, reply_markup = button_users())
-
+	await send_salary(message, time_must_letter, list_money, total)
 	await asyncio.sleep(wait_minute)
 
-	total_income = float(total_income)
-	if total_income == int(total_income):
-		total_income = int(total_income)
-
+	total_income = {int(total_income): int(total_income)}.get(total_income, total_income)
 	broker_income = total_income * (400 / 1041)
 	client_income = total_income * (206 / 347)
 
@@ -95,6 +85,17 @@ async def handle_authorization(message: types.Message, state: FSMContext):
 	await bot.send_message(message.chat.id, text, reply_markup = button_users())
 	await change_graph(message, full_name, deposit, data, total_income, broker, active_trading, total_income, broker_income, client_income, slot)
 	await bot.send_message(message.chat.id, text_contact_broker, reply_markup = button_users())
+
+async def send_salary(message, time_must_letter, list_money, total, i = 0):
+	if i < time_must_letter - 3:
+		await asyncio.sleep(3600)
+
+		earn = list_money[i]
+		total = round(total + earn, 3)
+		text = text_trading.format(earn, total)
+		await bot.send_message(message.chat.id, text, reply_markup = button_users())
+
+		await send_salary(message, time_must_letter, list_money, total, i + 1)
 
 def get_list_money(time_must_letter, overall_balance, total_income):
 	profit = total_income - overall_balance - ((total_income - overall_balance) / time_must_letter * (60 - datetime.now().minute)) / 60
@@ -116,10 +117,8 @@ def button_users():
 text_start_trading = """
 👋{}, здравствуйте
 💳<b>Сумма вашего депозита</b>: {}₽
-
 📈<i>Торговля уже началась</i>📈
 ⏰<i>Время выплаты 09:00</i>
-
 <b>Заработано:</b> 300₽
 <b>Общий баланс:</b> {}₽
 """

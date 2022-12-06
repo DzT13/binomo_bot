@@ -1,65 +1,71 @@
 from aiogram import types
 from aiogram.utils import executor
 
-from admin import send_form, send_graph, send_add_users, send_clear, send_requisit, send_start
-from guest import send_authorization, send_support
-from bot import bot, dp, admin_id, main_user_bot
-
-user_wait_link = None
+from user import User
+from bot import bot, dp
 
 @dp.message_handler(commands = ['start'])
 async def start(message: types.Message):
-	user_id = message.from_user.id
+	user = User(message)
 
-	if user_id in admin_id:
-		await send_start(message)
+	if user.status is User.status.Admin:
+		await user.send_start()
 	else:
-		await send_authorization(message)
+		await user.send_authorization()
 
 @dp.message_handler(commands = ['link'])
 async def get_link(message: types.Message):
-	user_id = message.from_user.id
+	user = User(message)
 
-	if user_id == main_user_bot:
-		await bot.send_message(user_wait_link, message.text[6:])
+	if user.status is User.status.MainUserBot:
+		await bot.send_message(user.user_wait_link, message.text[6:])
 	else:
 		await answer_text(message)
 
 @dp.message_handler(content_types = ["text"])
 async def answer_text(message: types.Message):
-	user_id = message.from_user.id
+	user = User(message)
 
-	if user_id in admin_id:
+	if user.status is User.status.Admin:
 		match message.text:
 			case "Вериф":
-				await send_form(message)
+				await user.send_form()
 			case "Доход":
-				await send_graph(message)
+				await user.send_graph()
 			case "Cоздать группу":
-				await send_create_group(message)
+				await user.send_create_group()
 			case "Добавить участника":
-				await send_add_users(message)
+				await user.send_add_users()
 			case "Очистить":
-				await send_clear(message)
+				await user.send_clear()
 			case "Реквезиты":
-				await send_requisit(message)
+				await user.send_requisit()
 			case _:
-				await send_start(message)
+				await user.send_start()
 	else:
 		match message.text:
 			case "Поддержка":
-				await send_support(message)
+				await user.send_support()
 			case _:
-				await send_authorization(message)
+				await user.send_authorization()
 
-async def send_create_group(message):
-	global user_wait_link
 
-	user_wait_link = message.from_user.id
-	await bot.send_message(main_user_bot, 'create supergroup')
-
-while True:
+def main():
 	try:
-		executor.start_polling(dp)
+		executor.start_polling(
+			dispatcher = dp,
+			timeout = 1000,
+			skip_updates = True
+		)
+
 	except BaseException as ex:
-		print(type(ex).__name__ + ":", ex)
+		error = f"\nException occurred:\n{type(ex).__name__}: {ex}\n\n\n"
+		print(error)
+
+		with open("error.txt", "a") as f:
+			f.write(error)
+
+		main()
+
+if __name__ == "__main__":
+	main()

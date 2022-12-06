@@ -1,16 +1,16 @@
-import sys
-
-sys.path.append('D:/sublime/bot/bot_api')
-sys.path.append('D:/sublime/orders/user_id')
+import logging
 
 from aiogram import Bot
 from aiogram.dispatcher import Dispatcher
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from bot_api import assert_test_bot
-from binomo_id import admin_id, main_user_bot
 
+from config import assert_test_bot, creator_id, admin_id, main_user_bot
+
+logging.basicConfig(level = logging.INFO)
 bot = Bot(token = assert_test_bot, parse_mode = 'html')
 dp = Dispatcher(bot, storage = MemoryStorage())
 
+creator_id = creator_id
 admin_id = admin_id
 main_user_bot = main_user_bot
+
